@@ -1,0 +1,8 @@
+backup_user: user
+backup_server_addr: 127.0.0.1
+backup_path: ~/Backup
+# %s represents the current date.
+backup_folder_format: worlds-%s
+
+# Used for getting the space left on the device. Requires the server to have `df` installed.
+drive_name: /dev/sda/
