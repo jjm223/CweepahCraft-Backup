@@ -2,6 +2,7 @@ name: CweepahCraft-Backup
 description: Backs up a world to a remote server.
 author: jjm_223
 version: 1.0-SNAPSHOT
+softdepend: [CweepahCraft-Framework]
 main: net.cweepahcraft.backup.BackupPlugin
 commands:
   ccbackup:

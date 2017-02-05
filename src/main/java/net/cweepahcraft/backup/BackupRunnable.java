@@ -18,6 +18,7 @@
 
 package net.cweepahcraft.backup;
 
+import net.cweepahcraft.framework.api.NotifySlack;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.World;
@@ -90,9 +91,10 @@ public class BackupRunnable extends BukkitRunnable
         {
             kibibytesLeft = kibibytesLeft();
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            e.printStackTrace();
+            ex.printStackTrace();
+            finish(false);
             return;
         }
 
@@ -116,29 +118,59 @@ public class BackupRunnable extends BukkitRunnable
         {
             worldFolder = saveOff.get();
         }
-        catch (InterruptedException | ExecutionException e)
+        catch (InterruptedException | ExecutionException ex)
         {
-            e.printStackTrace();
+            ex.printStackTrace();
+            finish(false);
             return;
         }
 
         if (worldFolder == null)
             return;
 
-        try {
+        try
+        {
             rsync(worldFolder);
         }
         catch (Exception ex)
         {
-            throw new RuntimeException(ex);
+            ex.printStackTrace();
+            finish(false);
+            return;
         }
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            CommandSender player = getSender();
-            player.sendMessage(ChatColor.AQUA + "Backup of '" + world + "' finished.");
+        finish(true);
+    }
 
-            Bukkit.getWorld(world).setAutoSave(true);
-        });
+    private void finish(boolean success)
+    {
+        StringBuilder builder = new StringBuilder("Backup of ").append(world);
+        if (success)
+        {
+            builder.append(" finished.");
+        }
+        else
+        {
+            builder.append(" failed. See console for details.");
+        }
+        builder.insert(0, success ? ChatColor.GREEN : ChatColor.RED);
+
+        new BukkitRunnable()
+        {
+            @Override
+            public void run()
+            {
+                CommandSender player = getSender();
+                player.sendMessage(builder.toString());
+
+                Bukkit.getWorld(world).setAutoSave(true);
+
+                if (!success && Bukkit.getPluginManager().getPlugin("CweepahCraft-Framework") != null)
+                {
+                    new NotifySlack(builder.toString().substring(2), "@jacob").sendMessage();
+                }
+            }
+        }.runTask(plugin);
     }
 
     private CommandSender getSender()
