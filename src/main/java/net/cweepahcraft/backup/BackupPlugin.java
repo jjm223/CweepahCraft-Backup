@@ -61,6 +61,7 @@ public class BackupPlugin extends JavaPlugin
         String backupPath = getConfig().getString("backup_path");
         String folderFormat = getConfig().getString("backup_folder_format");
         String driveName = getConfig().getString("drive_name");
+        long rsyncTimeout = getConfig().getLong("rsync_timeout");
 
         UUID player;
         if (sender instanceof Player)
@@ -72,7 +73,8 @@ public class BackupPlugin extends JavaPlugin
             player = null;
         }
 
-        new BackupRunnable(this, workingDir, worldName, backupUser, address, backupPath, folderFormat, driveName, player).start();
+        new BackupRunnable(this, workingDir, worldName, backupUser, address, backupPath, folderFormat, driveName,
+                rsyncTimeout, player).start();
         return true;
     }
 }

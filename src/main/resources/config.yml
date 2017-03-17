@@ -6,3 +6,6 @@ backup_folder_format: worlds-%s
 
 # Used for getting the space left on the device. Requires the server to have `df` installed.
 drive_name: /dev/sda/
+
+# Time, in milliseconds, before the backup should be aborted. 0 or less for no timeout.
+rsync_timeout: 3600000

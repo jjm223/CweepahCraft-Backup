@@ -43,21 +43,24 @@ public class BackupRunnable extends BukkitRunnable
 {
     private BackupPlugin plugin;
 
-    private File workingDirectory;
-    private String world;
-    private String backupUser;
-    private String serverAddress;
-    private String backupPath;
-    private String folderFormat;
-    private String driveName;
-    private UUID player;
+    private final File workingDirectory;
+    private final String world;
+    private final String backupUser;
+    private final String serverAddress;
+    private final String backupPath;
+    private final String folderFormat;
+    private final String driveName;
+    private final long rsyncTimeout;
+    private final UUID player;
+
+    private volatile Process activeProcess;
 
     private PrintStream logOut;
     private PrintStream logErr;
 
     public BackupRunnable(BackupPlugin plugin, File workingDirectory, String world, String backupUser,
                           String serverAddress, String backupPath, String folderFormat, String driveName,
-                          UUID player)
+                          long rsyncTimeout, UUID player)
     {
         this.plugin = plugin;
         this.workingDirectory = workingDirectory;
@@ -66,7 +69,8 @@ public class BackupRunnable extends BukkitRunnable
         this.serverAddress = serverAddress;
         this.backupPath = backupPath;
         this.folderFormat = folderFormat;
-        this.driveName = driveName;
+        this.driveName = driveName.replace("/", "\\/");
+        this.rsyncTimeout = rsyncTimeout;
         this.player = player;
 
         this.logOut = new PrintStream(new LogOutputStream(plugin.getLogger(), Level.INFO));
@@ -128,9 +132,18 @@ public class BackupRunnable extends BukkitRunnable
         if (worldFolder == null)
             return;
 
+        ProcessTimeout timeout = new ProcessTimeout(rsyncTimeout, "Backup-" + this.world, () ->
+        {
+            plugin.getLogger().severe("Backup timed out.");
+            activeProcess.destroyForcibly();
+        });
+
+        timeout.start();
+
         try
         {
             rsync(worldFolder);
+            timeout.finish();
         }
         catch (Exception ex)
         {
@@ -206,8 +219,6 @@ public class BackupRunnable extends BukkitRunnable
 
         String result = new String(outputStream.toByteArray());
 
-        driveName = driveName.replace("/", "\\/");
-
         String patternString = driveName + "\\s+[0-9]*\\s+[0-9]*\\s+([0-9]*)";
 
         Pattern pattern = Pattern.compile(patternString, Pattern.CASE_INSENSITIVE);
@@ -232,12 +243,12 @@ public class BackupRunnable extends BukkitRunnable
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.directory(workingDir);
 
-        final Process ps = pb.start();
+        activeProcess = pb.start();
 
-        new Thread(new StreamRedirector(ps.getInputStream(), out)).start();
-        new Thread(new StreamRedirector(ps.getErrorStream(), err)).start();
+        new Thread(new StreamRedirector(activeProcess.getInputStream(), out)).start();
+        new Thread(new StreamRedirector(activeProcess.getErrorStream(), err)).start();
 
-        int status = ps.waitFor();
+        int status = activeProcess.waitFor();
 
         if (status != 0)
         {

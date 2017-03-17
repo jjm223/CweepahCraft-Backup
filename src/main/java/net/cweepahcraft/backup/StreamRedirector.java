@@ -34,8 +34,7 @@ public class StreamRedirector implements Runnable
     @Override
     public void run()
     {
-        BufferedReader br = new BufferedReader(new InputStreamReader(in));
-        try
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(in)))
         {
             String line;
             while ((line = br.readLine()) != null)
@@ -43,9 +42,6 @@ public class StreamRedirector implements Runnable
                 out.println(line);
             }
         }
-        catch (IOException ex)
-        {
-            throw new RuntimeException(ex);
-        }
+        catch (IOException ignored) {}
     }
 }
